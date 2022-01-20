@@ -119,7 +119,6 @@ rm -rf .gitignore
 rm -f ..gitignore.swp
 rm CONTRIBUTING.md
 rm package.json
-rm -rf localconfig
 rm -rf cache
 rm -rf robots.txt
 rm -rf sitemap.xml

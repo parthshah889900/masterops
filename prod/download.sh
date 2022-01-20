@@ -15,3 +15,8 @@ do
     fi
 done
 rm -rf artifact.zip
+
+if [ ! -d "vendor"]; then
+    cd ..
+    composer install -d public_html
+fi
