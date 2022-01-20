@@ -230,6 +230,23 @@ rm appspec.yml
 rm commit.sh 
 rm -rf gitPush.zip
 
+gitPush(){
+  echo "gitPush pipeline is running please wait"
+  aws cloudformation create-stack --stack-name "$project-$branch-gitPush" --template-body file://tempJson/gitPush.json --parameters ParameterKey=CodeDeployApplication,ParameterValue="$project-$branch-gitPush"  ParameterKey=DeploymentGroupName,ParameterValue="$project-$branch-gitPush" ParameterKey=ArnforDeploymentGroup,ParameterValue=$arnDeployGroup ParameterKey=KeyForDEploymentGroup,ParameterValue=Name ParameterKey=ValueForDeploymentGroup,ParameterValue=$valueLiveServer ParameterKey=CodePipelineName,ParameterValue="$project-$branch-gitPush" ParameterKey=S3BucketName,ParameterValue="$project-onprintshop" ParameterKey=S3ObjectKeys,ParameterValue="$branch/GitPush/gitPush.zip" ParameterKey=ArnforCodePipeline,ParameterValue=$arnCodePipeline --capabilities CAPABILITY_NAMED_IAM
+  sleep 13s
+  deployId=`aws deploy list-deployments --application-name $project-$branch-gitPush --deployment-group-name $project-$branch-gitPush --query 'deployments[0]' --output text`
+  echo $deployId
+  aws deploy stop-deployment --deployment-id $deployId
+}
+if aws cloudformation describe-stacks --stack-name "$project-$branch-gitPush" --query 'Stacks[*].[StackStatus]' --output text 2>&1 | grep -q 'ValidationError'
+then 
+  gitPush
+else
+  aws cloudformation delete-stack --stack-name "$project-$branch-gitPush"
+  sleep 30s
+  gitPush
+fi
+
 # rollback stack create from here
 if aws cloudformation describe-stacks --stack-name "$project-$branch-rollback" --query 'Stacks[*].[StackStatus]' --output text 2>&1 | grep -q 'ValidationError'
 then 
