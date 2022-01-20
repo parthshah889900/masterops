@@ -20,27 +20,21 @@ for (( i=0; i<$gitNumber; i++ ))
 do
     assetUrl=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.url" #path/#project/#branch/#repo/devops.json)
     assetUrl=`echo "$assetUrl" | tr -d '"'`
-    if [ "$assetUrl" != "" ]; then
-        assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
-        assetBranch=`echo "$assetBranch" | tr -d '"'`
 
-        readarray -d / -t variable<<< $assetUrl
-        variable=`echo ${variable[-1]}`
-        repoFolder=`echo "${variable::-4}"`
+    disabled=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.disabled" #path/#project/#branch/#repo/devops.json)
+    disabled=`echo "$disabled" | tr -d '"'`
 
-        if [ ! -d $repoFolder ]; then
-            mkdir $repoFolder
-            cd $repoFolder
-            mkdir $assetBranch
-            cd $assetBranch
-            git clone $assetUrl
-            cd $repoFolder
-            git checkout $assetBranch
-            cd ../../..
-        fi
+    if [ "$disabled" != "true" ]; then
+        if [ "$assetUrl" != "" ]; then
+            assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
+            assetBranch=`echo "$assetBranch" | tr -d '"'`
 
-        if [ -d $repoFolder ]; then
-            if [ ! -d $repoFolder/$assetBranch ]; then
+            readarray -d / -t variable<<< $assetUrl
+            variable=`echo ${variable[-1]}`
+            repoFolder=`echo "${variable::-4}"`
+
+            if [ ! -d $repoFolder ]; then
+                mkdir $repoFolder
                 cd $repoFolder
                 mkdir $assetBranch
                 cd $assetBranch
@@ -48,10 +42,22 @@ do
                 cd $repoFolder
                 git checkout $assetBranch
                 cd ../../..
-            else
-                cd $repoFolder/$assetBranch/$repoFolder
-                git pull
-                cd ../../..
+            fi
+
+            if [ -d $repoFolder ]; then
+                if [ ! -d $repoFolder/$assetBranch ]; then
+                    cd $repoFolder
+                    mkdir $assetBranch
+                    cd $assetBranch
+                    git clone $assetUrl
+                    cd $repoFolder
+                    git checkout $assetBranch
+                    cd ../../..
+                else
+                    cd $repoFolder/$assetBranch/$repoFolder
+                    git pull
+                    cd ../../..
+                fi
             fi
         fi
     fi
@@ -64,31 +70,37 @@ destinationPath="$project/$branch/artifact"
 includeArtifactNumber=`jq ".deployments.${branch}.build.includeArtifact | length" #path/#project/#branch/#repo/devops.json`
 for (( j=0; j<$includeArtifactNumber; j++ ))
 do
-    assetNumber=`jq ".deployments.${branch}.build.includeArtifact[$j].assets | length" #path/#project/#branch/#repo/devops.json`
-    for (( i=0; i<$assetNumber; i++ ))
-    do
-        assetsDestination=$(jq ".deployments.${branch}.build.includeArtifact[$j].assets | .[$i].destination" #path/#project/#branch/#repo/devops.json)
-        assetsDestination=`echo "$assetsDestination" | tr -d '"'`
-        if [ ! -d $destinationPath/$assetsDestination ]; then
-            mkdir -p $destinationPath/$assetsDestination
+
+    disabled=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.disabled" #path/#project/#branch/#repo/devops.json)
+    disabled=`echo "$disabled" | tr -d '"'`
+
+    if [ "$disabled" != "true" ]; then
+        assetNumber=`jq ".deployments.${branch}.build.includeArtifact[$j].assets | length" #path/#project/#branch/#repo/devops.json`
+        for (( i=0; i<$assetNumber; i++ ))
+        do
+            assetsDestination=$(jq ".deployments.${branch}.build.includeArtifact[$j].assets | .[$i].destination" #path/#project/#branch/#repo/devops.json)
+            assetsDestination=`echo "$assetsDestination" | tr -d '"'`
+            if [ ! -d $destinationPath/$assetsDestination ]; then
+                mkdir -p $destinationPath/$assetsDestination
+            fi
+            assetsSource=$(jq ".deployments.${branch}.build.includeArtifact[$j].assets | .[$i].source" #path/#project/#branch/#repo/devops.json)
+            assetsSource=`echo "$assetsSource" | tr -d '"'` 
+        done
+
+        assetUrl=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.url" #path/#project/#branch/#repo/devops.json)
+        assetUrl=`echo "$assetUrl" | tr -d '"'`
+
+        if [ "$assetUrl" != "" ]; then
+            assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
+            assetBranch=`echo "$assetBranch" | tr -d '"'`
+
+            readarray -d / -t variable<<< $assetUrl
+            variable=`echo ${variable[-1]}`
+            repoFolder=`echo "${variable::-4}"`
+            cp -r $repoFolder/$assetBranch/$repoFolder/$assetsSource $destinationPath/$assetsDestination
+        else
+            cp -r #project/#branch/artifact/$assetsSource #project/#branch/artifact/$assetsDestination
         fi
-        assetsSource=$(jq ".deployments.${branch}.build.includeArtifact[$j].assets | .[$i].source" #path/#project/#branch/#repo/devops.json)
-        assetsSource=`echo "$assetsSource" | tr -d '"'` 
-    done
-
-    assetUrl=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.url" #path/#project/#branch/#repo/devops.json)
-    assetUrl=`echo "$assetUrl" | tr -d '"'`
-
-    if [ "$assetUrl" != "" ]; then
-        assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
-        assetBranch=`echo "$assetBranch" | tr -d '"'`
-
-        readarray -d / -t variable<<< $assetUrl
-        variable=`echo ${variable[-1]}`
-        repoFolder=`echo "${variable::-4}"`
-        cp -r $repoFolder/$assetBranch/$repoFolder/$assetsSource $destinationPath/$assetsDestination
-    else
-        cp -r #project/#branch/artifact/$assetsSource #project/#branch/artifact/$assetsDestination
     fi
 done
 
