@@ -22,36 +22,6 @@ repo=$project
 echo $project
 echo $repo
 
-aws s3 cp s3://masterops/stage/ . --recursive
-file=encrypt.sh
-file2=gitStatus.sh
-
-file4=artifact.sh
-
-sed -i "s|#project|$project|g" $file
-sed -i "s|#repo|$repo|g" $file
-sed -i "s|#path|$buildServerPath|g" $file
-sed -i "s|#branch|$branch|g" $file
-sed -i "s|#project|$project|g" $file2
-sed -i "s|#repo|$repo|g" $file2
-sed -i "s|#path|$buildServerPath|g" $file2
-sed -i "s|#branch|$branch|g" $file2
-sed -i "s|#project|$project|g" $file4
-sed -i "s|#branch|$branch|g" $file4
-sed -i "s|#path|$buildServerPath|g" $file4
-sed -i "s|#prod|$livesServerPath|g" $file4
-sed -i "s|#repo|$repo|g" $file4
-sed -i "s|#git_url|$git_url|g" $file4
-
-buildServerUser=`jq ".deployments.${branch}.build.serverUser" devops.json`
-template='{"version":0.0,"os":"linux","hooks":{"AfterInstall":[{"location":"gitStatus.sh","timeout":300,"runas":%s}],"ApplicationStart":[{"location":"encrypt.sh","timeout":300,"runas":%s}],"ValidateService":[{"location":"artifact.sh","timeout":300,"runas":%s}]}}'
-json_string=$(printf "$template" $buildServerUser $buildServerUser $buildServerUser)
-echo $json_string > fileName.json
-yq eval -P fileName.json > appspec.yml
-rm fileName.json
-# source.zip is created here
-zip source.zip appspec.yml encrypt.sh gitStatus.sh artifact.sh
-
 #it will  create a bucket if its's does not exist
 if aws s3 ls "s3://$project-onprintshop" 2>&1 | grep -q 'NoSuchBucket'
 then
@@ -62,38 +32,32 @@ then
 fi
 
 
-#it will move source.zip to bucket
-aws s3 cp source.zip "s3://$project-onprintshop/$branch/Source/"
-
-rm appspec.yml
-rm $file
-rm $file2
-rm $file4
-rm source.zip
-
 #this will downloads the new folder from bucket
-aws s3 cp s3://masterops/new/ . --recursive
-file5=newProject.sh
-sed -i "s|#project|$project|g" $file5
-sed -i "s|#repo|$repo|g" $file5
-sed -i "s|#git_url|$git_url|g" $file5
-sed -i "s|#branch|$branch|g" $file5
-sed -i "s|#path|$buildServerPath|g" $file5
+if aws codepipeline get-pipeline-state --name $project-$branch-new 2>&1 | grep -q 'PipelineNotFoundException'
+then 
+  aws s3 cp s3://masterops/new/ . --recursive
+  file5=newProject.sh
+  sed -i "s|#project|$project|g" $file5
+  sed -i "s|#repo|$repo|g" $file5
+  sed -i "s|#git_url|$git_url|g" $file5
+  sed -i "s|#branch|$branch|g" $file5
+  sed -i "s|#path|$buildServerPath|g" $file5
 
-template='{"version":0.0,"os":"linux","hooks":{"ApplicationStart":[{"location":"newProject.sh","timeout":300,"runas":%s}]}}'
-json_string=$(printf "$template" $buildServerUser)
-echo $json_string > fileName.json
-yq eval -P fileName.json > appspec.yml
-rm fileName.json
+  template='{"version":0.0,"os":"linux","hooks":{"ApplicationStart":[{"location":"newProject.sh","timeout":300,"runas":%s}]}}'
+  json_string=$(printf "$template" $buildServerUser)
+  echo $json_string > fileName.json
+  yq eval -P fileName.json > appspec.yml
+  rm fileName.json
 
-#it will create the zip and send to the bucket
-zip new.zip appspec.yml newProject.sh
-aws s3 cp new.zip "s3://$project-onprintshop/$branch/New/"
-sleep 1s
+  #it will create the zip and send to the bucket
+  zip new.zip appspec.yml newProject.sh
+  aws s3 cp new.zip "s3://$project-onprintshop/$branch/New/"
+  sleep 1s
 
-rm appspec.yml
-rm newProject.sh 
-rm -rf new.zip
+  rm appspec.yml
+  rm newProject.sh 
+  rm -rf new.zip
+fi 
 
 newPipeline(){
   aws cloudformation create-stack --stack-name "$project-$branch-new" --template-body file://tempJson/newproject.json --parameters ParameterKey=CodeDeployApplication,ParameterValue="$project-$branch-new"  ParameterKey=DeploymentGroupName,ParameterValue="$project-$branch-new" ParameterKey=ArnforDeploymentGroup,ParameterValue=$arnDeployGroup ParameterKey=KeyForDEploymentGroup,ParameterValue=Name ParameterKey=ValueForDeploymentGroup,ParameterValue=$valueBuildServer ParameterKey=CodePipelineName,ParameterValue="$project-$branch-new" ParameterKey=S3BucketName,ParameterValue="$project-onprintshop" ParameterKey=S3ObjectKeys,ParameterValue="$branch/New/new.zip" ParameterKey=ArnforCodePipeline,ParameterValue=$arnCodePipeline --capabilities CAPABILITY_NAMED_IAM
@@ -121,10 +85,13 @@ if aws cloudformation describe-stacks --stack-name "$project-$branch-new" --quer
 then 
   newPipeline
 else
-  aws cloudformation delete-stack --stack-name "$project-$branch-new"
-  echo "Your project stack is deleting please wait"
-  sleep 15s
-  newPipeline
+  newPipeState=`aws codepipeline get-pipeline-state --name $project-$branch-new --query [stageStates[-1].latestExecution.status] --output text`
+  if [ $newPipeState != "Succeeded" ]; then
+    aws cloudformation delete-stack --stack-name "$project-$branch-new"
+    echo "Your project stack is deleting please wait"
+    sleep 15s
+    newPipeline
+  fi
 fi
 
 aws cloudformation delete-stack --stack-name "$project-$branch-new"
@@ -132,7 +99,50 @@ echo "Your project stack is deleting please wait"
 sleep 15s
 
 
-# staging side 
+######################################## staging side #######################
+if aws codepipeline get-pipeline-state --name $project-$branch-stage 2>&1 | grep -q 'PipelineNotFoundException'
+then 
+  aws s3 cp s3://masterops/stage/ . --recursive
+  file=encrypt.sh
+  file2=gitStatus.sh
+
+  file4=artifact.sh
+
+  sed -i "s|#project|$project|g" $file
+  sed -i "s|#repo|$repo|g" $file
+  sed -i "s|#path|$buildServerPath|g" $file
+  sed -i "s|#branch|$branch|g" $file
+  sed -i "s|#project|$project|g" $file2
+  sed -i "s|#repo|$repo|g" $file2
+  sed -i "s|#path|$buildServerPath|g" $file2
+  sed -i "s|#branch|$branch|g" $file2
+  sed -i "s|#project|$project|g" $file4
+  sed -i "s|#branch|$branch|g" $file4
+  sed -i "s|#path|$buildServerPath|g" $file4
+  sed -i "s|#prod|$livesServerPath|g" $file4
+  sed -i "s|#repo|$repo|g" $file4
+  sed -i "s|#git_url|$git_url|g" $file4
+
+  buildServerUser=`jq ".deployments.${branch}.build.serverUser" devops.json`
+  template='{"version":0.0,"os":"linux","hooks":{"AfterInstall":[{"location":"gitStatus.sh","timeout":300,"runas":%s}],"ApplicationStart":[{"location":"encrypt.sh","timeout":300,"runas":%s}],"ValidateService":[{"location":"artifact.sh","timeout":300,"runas":%s}]}}'
+  json_string=$(printf "$template" $buildServerUser $buildServerUser $buildServerUser)
+  echo $json_string > fileName.json
+  yq eval -P fileName.json > appspec.yml
+  rm fileName.json
+  # source.zip is created here
+  zip source.zip appspec.yml encrypt.sh gitStatus.sh artifact.sh 
+
+  # it will move source.zip to bucket
+
+  aws s3 cp source.zip "s3://$project-onprintshop/$branch/Source/"
+
+  rm appspec.yml
+  rm $file
+  rm $file2
+  rm $file4
+  rm source.zip
+fi
+
 stageDeploy(){
   echo "Build pipeline is running please wait"
   aws cloudformation create-stack --stack-name "$project-$branch-stagedeploy" --template-body file://tempJson/stagedeploy.json --parameters ParameterKey=CodeDeployApplication,ParameterValue="$project-$branch-stage"  ParameterKey=DeploymentGroupName,ParameterValue="$project-$branch-stage" ParameterKey=ArnforDeploymentGroup,ParameterValue=$arnDeployGroup ParameterKey=KeyForDEploymentGroup,ParameterValue=Name ParameterKey=ValueForDeploymentGroup,ParameterValue=$valueBuildServer ParameterKey=CodePipelineName,ParameterValue="$project-$branch-stage" ParameterKey=S3BucketName,ParameterValue="$project-onprintshop" ParameterKey=S3ObjectKeys,ParameterValue="$branch/Source/source.zip" ParameterKey=ArnforCodePipeline,ParameterValue=$arnCodePipeline --capabilities CAPABILITY_NAMED_IAM
@@ -158,18 +168,21 @@ stageDeploy(){
       done
       rm temp.json
   fi
-  }
+}
 
 if aws cloudformation describe-stacks --stack-name "$project-$branch-stagedeploy" --query 'Stacks[*].[StackStatus]' --output text 2>&1 | grep -q 'ValidationError'
 then 
   stageDeploy
 else
-  aws cloudformation delete-stack --stack-name "$project-$branch-stagedeploy"
-  sleep 30s
-  stageDeploy
+  stagePipeState=`aws codepipeline get-pipeline-state --name $project-$branch-stage --query [stageStates[-1].latestExecution.status] --output text`
+  if [ $stagePipeState != "Succeeded" ]; then 
+    aws cloudformation delete-stack --stack-name "$project-$branch-stagedeploy"
+    sleep 30s
+    stageDeploy
+  fi
 fi
 
-# live side deploy
+########### live side deploy ############
 prodDeploy(){
   echo "Process is started for productions server"
   aws cloudformation create-stack --stack-name "$project-$branch-proddeploy" --template-body file://tempJson/proddeploy.json --parameters ParameterKey=CodeDeployApplication,ParameterValue="$project-$branch-prod"  ParameterKey=DeploymentGroupName,ParameterValue="$project-$branch-prod" ParameterKey=ArnforDeploymentGroup,ParameterValue=$arnDeployGroup ParameterKey=KeyForDEploymentGroup,ParameterValue=Name ParameterKey=ValueForDeploymentGroup,ParameterValue=$valueLiveServer ParameterKey=CodePipelineName,ParameterValue="$project-$branch-prod" ParameterKey=S3BucketName,ParameterValue="$project-onprintshop" ParameterKey=S3ObjectKeys,ParameterValue="$branch/Prod/prod.zip" ParameterKey=ArnforCodePipeline,ParameterValue=$arnCodePipeline --capabilities CAPABILITY_NAMED_IAM
@@ -200,35 +213,40 @@ if aws cloudformation describe-stacks --stack-name "$project-$branch-proddeploy"
 then
   prodDeploy  
 else
-  aws cloudformation delete-stack --stack-name "$project-$branch-proddeploy"
-  sleep 30s
-  prodDeploy
+  prodPipeState=`aws codepipeline get-pipeline-state --name $project-$branch-prod --query [stageStates[-1].latestExecution.status] --output text`
+  if [ $prodPipeState != "Succeeded" ]; then 
+    aws cloudformation delete-stack --stack-name "$project-$branch-proddeploy"
+    sleep 30s
+    prodDeploy
+  fi
 fi
 
 
-# git push pipeline created:
+####### git push pipeline created: ########
+if aws codepipeline get-pipeline-state --name $project-$branch-gitPush 2>&1 | grep -q 'PipelineNotFoundException'
+then 
+  aws s3 cp s3://masterops/gitPush/ . --recursive
+  filePush=commit.sh
+  sed -i "s|#project|$project|g" $filePush
+  sed -i "s|#repo|$repo|g" $filePush
+  sed -i "s|#branch|$branch|g" $filePush
+  sed -i "s|#livepath|$livesServerPath|g" $filePush
 
-aws s3 cp s3://masterops/gitPush/ . --recursive
-filePush=commit.sh
-sed -i "s|#project|$project|g" $filePush
-sed -i "s|#repo|$repo|g" $filePush
-sed -i "s|#branch|$branch|g" $filePush
-sed -i "s|#livepath|$livesServerPath|g" $filePush
+  template='{"version":0.0,"os":"linux","hooks":{"ApplicationStart":[{"location":"commit.sh","timeout":300,"runas":%s}]}}'
+  json_string=$(printf "$template" $produser)
+  echo $json_string > fileName.json
+  yq eval -P fileName.json > appspec.yml
+  rm fileName.json
 
-template='{"version":0.0,"os":"linux","hooks":{"ApplicationStart":[{"location":"commit.sh","timeout":300,"runas":%s}]}}'
-json_string=$(printf "$template" $produser)
-echo $json_string > fileName.json
-yq eval -P fileName.json > appspec.yml
-rm fileName.json
+  # it will create the zip and send to the bucket
+  zip gitPush.zip appspec.yml commit.sh
+  aws s3 cp gitPush.zip "s3://$project-onprintshop/$branch/GitPush/"
+  sleep 1s
 
-# it will create the zip and send to the bucket
-zip gitPush.zip appspec.yml commit.sh
-aws s3 cp gitPush.zip "s3://$project-onprintshop/$branch/GitPush/"
-sleep 1s
-
-rm appspec.yml
-rm commit.sh 
-rm -rf gitPush.zip
+  rm appspec.yml
+  rm commit.sh 
+  rm -rf gitPush.zip
+fi
 
 gitPush(){
   echo "gitPush pipeline is running please wait"
@@ -242,12 +260,15 @@ if aws cloudformation describe-stacks --stack-name "$project-$branch-gitPush" --
 then 
   gitPush
 else
-  aws cloudformation delete-stack --stack-name "$project-$branch-gitPush"
-  sleep 30s
-  gitPush
+  gitPushPipeState=`aws codepipeline get-pipeline-state --name $project-$branch-gitPush --query [stageStates[-1].latestExecution.status] --output text`
+  if [ $gitPushPipeState != "Failed" ]; then
+    aws cloudformation delete-stack --stack-name "$project-$branch-gitPush"
+    sleep 30s
+    gitPush
+  fi
 fi
 
-# rollback stack create from here
+###### rollback stack create from here #########
 if aws cloudformation describe-stacks --stack-name "$project-$branch-rollback" --query 'Stacks[*].[StackStatus]' --output text 2>&1 | grep -q 'ValidationError'
 then 
   echo "Rollback is creating:"
