@@ -42,7 +42,7 @@ then
   sed -i "s|#git_url|$git_url|g" $file5
   sed -i "s|#branch|$branch|g" $file5
   sed -i "s|#path|$buildServerPath|g" $file5
-
+  buildServerUser=`jq ".deployments.${branch}.build.serverUser" devops.json`
   template='{"version":0.0,"os":"linux","hooks":{"ApplicationStart":[{"location":"newProject.sh","timeout":300,"runas":%s}]}}'
   json_string=$(printf "$template" $buildServerUser)
   echo $json_string > fileName.json
@@ -60,6 +60,8 @@ then
 fi 
 
 newPipeline(){
+  aws s3 cp s3://masterops/stage/tempJson/ tempJson --recursive
+  sleep 1s
   aws cloudformation create-stack --stack-name "$project-$branch-new" --template-body file://tempJson/newproject.json --parameters ParameterKey=CodeDeployApplication,ParameterValue="$project-$branch-new"  ParameterKey=DeploymentGroupName,ParameterValue="$project-$branch-new" ParameterKey=ArnforDeploymentGroup,ParameterValue=$arnDeployGroup ParameterKey=KeyForDEploymentGroup,ParameterValue=Name ParameterKey=ValueForDeploymentGroup,ParameterValue=$valueBuildServer ParameterKey=CodePipelineName,ParameterValue="$project-$branch-new" ParameterKey=S3BucketName,ParameterValue="$project-onprintshop" ParameterKey=S3ObjectKeys,ParameterValue="$branch/New/new.zip" ParameterKey=ArnforCodePipeline,ParameterValue=$arnCodePipeline --capabilities CAPABILITY_NAMED_IAM
   echo "Please wait your project is creating"
   sleep 20s
@@ -79,6 +81,7 @@ newPipeline(){
           fi
       done
   fi
+  rm -rf tempJson
 }
 
 if aws cloudformation describe-stacks --stack-name "$project-$branch-new" --query 'Stacks[*].[StackStatus]' --output text 2>&1 | grep -q 'ValidationError'
