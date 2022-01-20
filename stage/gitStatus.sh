@@ -40,5 +40,6 @@ if [ "$packageChange" = "package.json" ] || [ ! -d node_modules ]; then
 fi
 
 gulp default
-find . -type f -not -iname '*.php' -not -iname 'composer.json' -exec cp --parents \{\} #path/#project/#branch/artifact/ \;
-
+find . -name '*.map' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+find . -name '*.js' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+find . -name '*.css' -exec cp --parents {} #path/#project/#branch/artifact/ \;
