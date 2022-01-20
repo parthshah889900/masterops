@@ -43,3 +43,15 @@ gulp default
 find . -name '*.map' -exec cp --parents {} #path/#project/#branch/artifact/ \;
 find . -name '*.js' -exec cp --parents {} #path/#project/#branch/artifact/ \;
 find . -name '*.css' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+
+# ====================================================================
+
+git diff --name-only $lastGitCommit $lastServerCommit . ':(exclude)*.php' ':(exclude)*.js' ':(exclude)*.css' >> otherFiles.txt
+filename6=otherFiles.txt
+declare -a myArray6
+myArray6=(`cat "$filename6"`)
+for (( i = 0 ; i < ${#myArray6[@]} ; i++))
+do
+    cp --parent ${myArray6[$i]} ../artifact
+done
+rm -rf otherFiles.txt
