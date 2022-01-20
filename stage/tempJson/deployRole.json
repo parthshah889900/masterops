@@ -1,0 +1,38 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Import Deploy Role ARn",
+	"Parameters": {
+		"RoleArnName": {
+			"Type": "String",
+			"Description": "role to create.",
+			"AllowedPattern": "[a-zA-Z][a-zA-Z0-9_-]*"
+		}
+	},
+	"Resources": {
+		"RoleGenerate": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"Path": "/",
+				"RoleName": {
+					"Ref": "RoleArnName"
+				},
+				"AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codedeploy.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": ["arn:aws:iam::aws:policy/AmazonS3FullAccess","arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"],       
+				"Description": "Allows CodeDeploy to call AWS services such as Auto Scaling on your behalf.",
+                "MaxSessionDuration": 3600
+			}
+		}
+	}
+}

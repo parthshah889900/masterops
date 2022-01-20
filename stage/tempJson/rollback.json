@@ -1,0 +1,71 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Import deploy template",
+	"Parameters": {
+		"CodeDeployApplication": {
+			"Type": "String",
+			"Description": "code deploy application to create."
+		},
+		"DeploymentGroupName": {
+			"Type": "String",
+			"Description": "code deploy application to create."
+		},
+		"KeyForDEploymentGroup": {
+			"Type": "String",
+			"Description": "code deploy application to create."
+		},
+		"ValueForDeploymentGroup": {
+			"Type": "String",
+			"Description": "code deploy application to create."
+		},
+		"ArnforDeploymentGroup": {
+			"Type": "String",
+			"Description": "ARN of the first IAM Managed Policy to add to the role"
+		}
+	},
+	"Resources": {
+		"SampleDeployApplication": {
+			"Type": "AWS::CodeDeploy::Application",
+			"Properties": {
+				"ApplicationName": {
+					"Ref": "CodeDeployApplication"
+				},
+				"ComputePlatform": "Server"
+			}
+		},
+		"DeploymentGroup": {
+			"Type": "AWS::CodeDeploy::DeploymentGroup",
+			"DependsOn": "SampleDeployApplication",
+			"Properties": {
+				"ApplicationName": {
+					"Ref": "CodeDeployApplication"
+				},
+				"DeploymentGroupName": {
+					"Ref": "DeploymentGroupName"
+				},
+				"DeploymentConfigName": "CodeDeployDefault.AllAtOnce",
+				"ServiceRoleArn": {
+					"Ref": "ArnforDeploymentGroup"
+				},
+				"AlarmConfiguration": {
+					"Enabled": false,
+					"IgnorePollAlarmFailure": false,
+					"Alarms": []
+				},
+				"DeploymentStyle": {
+					"DeploymentType": "IN_PLACE",
+					"DeploymentOption": "WITHOUT_TRAFFIC_CONTROL"
+				},
+				"OnPremisesInstanceTagFilters": [{
+					"Key": {
+						"Ref": "KeyForDEploymentGroup"
+					},
+					"Value": {
+						"Ref": "ValueForDeploymentGroup"
+					},
+					"Type": "KEY_AND_VALUE"
+				}]
+			}
+		}
+	}
+}
