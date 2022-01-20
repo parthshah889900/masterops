@@ -13,8 +13,6 @@ gitWant=`echo "$gitWant" | tr -d '"'`
 prodServerUser=`jq ".deployments.${branch}.codeRunner.serverUser" #path/#project/#branch/#repo/devops.json` 
 gitNumber=`jq ".deployments.${branch}.build.includeArtifact | length" #path/#project/#branch/#repo/devops.json`
 
-assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
-assetBranch=`echo "$assetBranch" | tr -d '"'`
 
 for (( i=0; i<$gitNumber; i++ ))
 do
@@ -29,6 +27,9 @@ do
             assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
             assetBranch=`echo "$assetBranch" | tr -d '"'`
 
+            assetTag=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.tag" #path/#project/#branch/#repo/devops.json)
+            assetTag=`echo "$assetTag" | tr -d '"'`
+
             readarray -d / -t variable<<< $assetUrl
             variable=`echo ${variable[-1]}`
             repoFolder=`echo "${variable::-4}"`
@@ -41,6 +42,7 @@ do
                 git clone $assetUrl
                 cd $repoFolder
                 git checkout $assetBranch
+                git checkout tags/v$assetTag
                 cd ../../..
             fi
 
@@ -52,6 +54,7 @@ do
                     git clone $assetUrl
                     cd $repoFolder
                     git checkout $assetBranch
+                    git checkout tags/v$assetTag
                     cd ../../..
                 else
                     cd $repoFolder/$assetBranch/$repoFolder
