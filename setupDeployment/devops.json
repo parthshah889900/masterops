@@ -1,0 +1,94 @@
+{
+  "sourceControl": "https://rxgit.radixweb.in/rxprojects/rxarchitecture/dotnet/rxarchitecture.git",
+  "deployments": {
+    "development": {
+      "build": {
+        "server": "OPSdeployment",
+        "path": "/home/php7encode/projects",
+        "serverUser": "php7encode",
+        "includeArtifact": [
+          {
+            "sourceControl": {
+              "url": "https://karantekwani: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@github.com/karantekwani/demoops.git",
+              "branch": "master"
+            },
+            "assets": [
+              {
+                "source": "img",
+                "destination": ""
+              }
+            ]
+          },
+          {
+            "sourceControl": {
+              "url": "https://karantekwani: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@github.com/karantekwani/.net-core-sample-project.git",
+              "branch": "master"
+            },
+            "assets": [
+              {
+                "source": "obj",
+                "destination": "demo"
+              }
+            ]
+          },
+          {
+            "sourceControl": {
+              "url": "",
+              "branch": ""
+            },
+            "assets": [
+              {
+                "source": "assets/*",
+                "destination": "images/tempImg"
+              }
+            ]
+          }
+        ],
+        "excludeArtifact": [
+          {
+            "source": "/img",
+            "file": [
+              "5646.jpg",
+              "6546.jpg"
+            ]
+          },
+          {
+            "source": "/demo/obj",
+            "file": [
+              "project.nuget.cache"
+            ]
+          },
+          {
+            "source": "/",
+            "file": [
+              "picasa.php"
+            ]
+          }
+        ],
+        "gitPush": [
+          {
+            "source": "/images/tempImg",
+            "destination": "/assets"
+          }
+        ],
+        "encryption": {
+          "wantToEncrypt": "y",
+          "confirmEncryptType": "f",
+          "expireOn": "NEVER"
+        }
+      },
+      "codeRunner": {
+        "server": "ops-dev",
+        "path": "/home",
+        "serverUser": "devops",
+        "isGitClone": "true"
+      }
+    }
+  },
+  "aws": {
+    "arn": {
+      "codepipeline": "arn:aws:iam::729660324417:role/service-role/codePipelineRole-onprintshop",
+      "codedeploy": "arn:aws:iam::729660324417:role/codeDeployRole-onprintshop"
+    }
+  }
+}
