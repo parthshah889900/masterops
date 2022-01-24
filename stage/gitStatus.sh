@@ -40,9 +40,17 @@ if [ "$packageChange" = "package.json" ] || [ ! -d node_modules ]; then
 fi
 
 gulp default
-find . -name '*.map' -exec cp --parents {} #path/#project/#branch/artifact/ \;
-find . -name '*.js' -exec cp --parents {} #path/#project/#branch/artifact/ \;
-find . -name '*.css' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+
+encryptionType=`jq -r ".deployments.${branch}.build.encryption.confirmEncryptType" devops.json`
+
+
+if [ $encryptionType = p ]; then
+  find . -name '*.map' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+  find . -name '*.js' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+  find . -name '*.css' -exec cp --parents {} #path/#project/#branch/artifact/ \;
+else
+  find . -type f -not -iname '*.php' -exec cp --parents \{\} #path/#project/#branch/artifact/ \;
+fi
 
 # ====================================================================
 
@@ -52,6 +60,6 @@ declare -a myArray6
 myArray6=(`cat "$filename6"`)
 for (( i = 0 ; i < ${#myArray6[@]} ; i++))
 do
-    cp --parent ${myArray6[$i]} ../artifact
+    cp -r --parent ${myArray6[$i]} ../artifact
 done
 rm -rf otherFiles.txt

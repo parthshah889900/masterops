@@ -16,13 +16,14 @@ do
         assetsDestination=`echo "$assetsDestination" | tr -d '"'`
 
         if [ ! -d $assetsDestination ]; then
-            mkdir -p $assetsDestination
+            myString="${assetsDestination:1}"
+            mkdir -p $myString
         fi
 
         cp -r #livepath/#project/#branch/public_html$assetsSource #livepath/#project/#branch/#repo$assetsDestination
 done
 
 git add .
-git commit -m "add $assetsDestination"
+git commit -m "add $myString"
 
 git push

@@ -27,9 +27,6 @@ do
             assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
             assetBranch=`echo "$assetBranch" | tr -d '"'`
 
-            assetTag=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.tag" #path/#project/#branch/#repo/devops.json)
-            assetTag=`echo "$assetTag" | tr -d '"'`
-
             readarray -d / -t variable<<< $assetUrl
             variable=`echo ${variable[-1]}`
             repoFolder=`echo "${variable::-4}"`
@@ -42,7 +39,6 @@ do
                 git clone $assetUrl
                 cd $repoFolder
                 git checkout $assetBranch
-                git checkout tags/v$assetTag
                 cd ../../..
             fi
 
@@ -54,7 +50,6 @@ do
                     git clone $assetUrl
                     cd $repoFolder
                     git checkout $assetBranch
-                    git checkout tags/v$assetTag
                     cd ../../..
                 else
                     cd $repoFolder/$assetBranch/$repoFolder
@@ -74,7 +69,7 @@ includeArtifactNumber=`jq ".deployments.${branch}.build.includeArtifact | length
 for (( j=0; j<$includeArtifactNumber; j++ ))
 do
 
-    disabled=$(jq ".deployments.${branch}.build.includeArtifact[$i].sourceControl.disabled" #path/#project/#branch/#repo/devops.json)
+    disabled=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.disabled" #path/#project/#branch/#repo/devops.json)
     disabled=`echo "$disabled" | tr -d '"'`
 
     if [ "$disabled" != "true" ]; then
@@ -88,22 +83,22 @@ do
             fi
             assetsSource=$(jq ".deployments.${branch}.build.includeArtifact[$j].assets | .[$i].source" #path/#project/#branch/#repo/devops.json)
             assetsSource=`echo "$assetsSource" | tr -d '"'` 
+
+            assetUrl=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.url" #path/#project/#branch/#repo/devops.json)
+            assetUrl=`echo "$assetUrl" | tr -d '"'`
+
+            if [ "$assetUrl" != "" ]; then
+                assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
+                assetBranch=`echo "$assetBranch" | tr -d '"'`
+
+                readarray -d / -t variable<<< $assetUrl
+                variable=`echo ${variable[-1]}`
+                repoFolder=`echo "${variable::-4}"`
+                cp -r $repoFolder/$assetBranch/$repoFolder/$assetsSource $destinationPath/$assetsDestination
+            else
+                cp -r #project/#branch/artifact/$assetsSource #project/#branch/artifact/$assetsDestination
+            fi
         done
-
-        assetUrl=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.url" #path/#project/#branch/#repo/devops.json)
-        assetUrl=`echo "$assetUrl" | tr -d '"'`
-
-        if [ "$assetUrl" != "" ]; then
-            assetBranch=$(jq ".deployments.${branch}.build.includeArtifact[$j].sourceControl.branch" #path/#project/#branch/#repo/devops.json)
-            assetBranch=`echo "$assetBranch" | tr -d '"'`
-
-            readarray -d / -t variable<<< $assetUrl
-            variable=`echo ${variable[-1]}`
-            repoFolder=`echo "${variable::-4}"`
-            cp -r $repoFolder/$assetBranch/$repoFolder/$assetsSource $destinationPath/$assetsDestination
-        else
-            cp -r #project/#branch/artifact/$assetsSource #project/#branch/artifact/$assetsDestination
-        fi
     fi
 done
 
@@ -134,9 +129,6 @@ rm -rf .gitignore
 rm -f ..gitignore.swp
 rm CONTRIBUTING.md
 rm package.json
-rm -rf cache
-rm -rf robots.txt
-rm -rf sitemap.xml
 rm -rf vendor
 rm -rf .vscode
 rm -rf .history
@@ -204,4 +196,5 @@ aws s3 cp rollback.zip s3://#project-onprintshop/#branch/Rollback/
 
 cd ..
 rm -rf artifact/*
+
 
