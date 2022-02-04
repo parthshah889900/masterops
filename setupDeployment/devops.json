@@ -1,0 +1,96 @@
+{
+  "sourceControl": "https://rxgit.radixweb.in/rxprojects/rxarchitecture/dotnet/rxarchitecture.git",
+  "deployments": {
+    "development": {
+      "build": {
+        "server": "ops-dev",
+        "path": "/home/devops",
+        "serverUser": "devops",
+        "action":{
+          "upload":[
+            {
+              "source": "public_html/images",
+              "destination": "public_html/images"
+            },
+            {
+              "source": "ops-lic",
+              "destination": "ops-lic"
+            }
+          ]
+        }
+      }
+    },
+    "master": {
+      "build": {
+        "server": "OPSdeployment",
+        "path": "/home/php7encode/projects",
+        "serverUser": "php7encode",
+        "cacheVersion":[
+          {
+            "from":"sc = 1",
+            "to":"sc = 2"
+          },
+          {
+            "from":"gore = 0",
+            "to":"gore = 1"
+          }
+        ],
+        "includeArtifact": [
+          {
+            "sourceControl": {
+              "url": "",
+              "branch": "",
+              "tag":"",
+              "disabled":"true"
+            },
+            "assets": [
+              {
+                "source": "",
+                "destination": ""
+              }
+            ]
+          },
+          {
+            "sourceControl": {
+              "url": "",
+              "branch": "",
+              "tag":"",
+              "disabled":"true"
+            },
+            "assets": [
+              {
+                "source": "",
+                "destination": ""
+              }
+            ]
+          }
+        ],
+        "excludeArtifact": [
+          {
+            "source": "",
+            "file": [
+              ""
+            ]
+          }
+        ],
+        "encryption": {
+          "wantToEncrypt": "true",
+          "confirmEncryptType": "f",
+          "expireOn": "NEVER"
+        }
+      },
+      "codeRunner": {
+        "server": "ops-prod",
+        "path": "/home/ansh1",
+        "serverUser": "ansh1",
+        "isBackup": "true"
+      }
+    }
+  },
+  "aws": {
+    "arn": {
+      "codepipeline": "arn:aws:iam::729660324417:role/service-role/codePipelineRole-onprintshop",
+      "codedeploy": "arn:aws:iam::729660324417:role/codeDeployRole-onprintshop"
+    }
+  }
+}

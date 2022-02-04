@@ -1,0 +1,75 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Working with S3",
+	"Parameters": {
+		"S3BucketName": {
+			"Type": "String",
+			"Description": "S3 bucket to create.",
+			"AllowedPattern": "[a-zA-Z][a-zA-Z0-9_-]*"
+		}
+	},
+	"Resources": {
+		"SampleS3Bucket": {
+			"Type": "AWS::S3::Bucket",
+			"Properties": {
+				"BucketName": {
+					"Ref": "S3BucketName"
+				},
+				"VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+			}
+		},
+		"BucketPoilcy": {
+			"Type": "AWS::S3::BucketPolicy",
+			"DependsOn": "SampleS3Bucket",
+			"Properties": {
+				"Bucket": {
+					"Ref": "S3BucketName"
+				},
+				"PolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [{
+							"Sid": "",
+							"Effect": "Allow",
+							"Principal": "*",
+							"Action": "s3:GetObject",
+							"Resource": {
+								"Fn::Join": [
+									"",
+									[
+										"arn:aws:s3:::",
+										{
+											"Ref": "S3BucketName"
+										},
+										"/*"
+									]
+								]
+							}
+						},
+						{
+							"Sid": "3",
+							"Effect": "Allow",
+							"Principal": {
+								"AWS": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity E2BEIEFOHGSO2G"
+							},
+							"Action": "s3:GetObject",
+							"Resource": {
+								"Fn::Join": [
+									"",
+									[
+										"arn:aws:s3:::",
+										{
+											"Ref": "S3BucketName"
+										},
+										"/*"
+									]
+								]
+							}
+						}
+					]
+				}
+			}
+		}
+	}
+}

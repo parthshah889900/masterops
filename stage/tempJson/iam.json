@@ -1,0 +1,22 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Import Deploy Role ARn",
+	"Parameters": {
+		"UserArnName": {
+			"Type": "String",
+			"Description": "User to create."
+		}
+	},
+	"Resources": {
+		"UserGenerate": {
+            "Type" : "AWS::IAM::User",
+            "Properties" : {
+                "Path" : "/",
+                "UserName": {
+					"Ref": "UserArnName"
+				},
+                "ManagedPolicyArns": ["arn:aws:iam::aws:policy/AmazonS3FullAccess","arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole","arn:aws:iam::aws:policy/AmazonEC2FullAccess","arn:aws:iam::aws:policy/AWSCloudFormationFullAccess","arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess","arn:aws:iam::aws:policy/AWSCodeDeployFullAccess","arn:aws:iam::aws:policy/EC2InstanceConnect"]
+            }
+        }
+    }
+}

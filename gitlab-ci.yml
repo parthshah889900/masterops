@@ -1,0 +1,87 @@
+build-job:
+  when: manual
+  variables:
+    GIT_STRATEGY: none
+  stage: build
+  script: |
+    aws codepipeline start-pipeline-execution --name rxarchitecture-master-stage --region ap-south-1
+    sleep 10s
+    status=`aws codepipeline get-pipeline-state --name rxarchitecture-master-stage --query stageStates[-1].latestExecution.status --region ap-south-1`
+    status=${status:1}
+    status=${status::-1}
+    if [ "$status" != "Succeeded" ]; then
+        echo "Build Pipeline is started"
+        while [ "$status" != "Succeeded" ]
+        do
+            sleep 15s
+            status=`aws codepipeline get-pipeline-state --name rxarchitecture-master-stage --query stageStates[-1].latestExecution.status --region ap-south-1`
+            status=${status:1}
+            status=${status::-1}
+            echo "Please wait build pipeline is in process.It will take time."
+            if [ "$status" = "Failed" ]; then
+            echo "$(tput setaf 1)"
+            echo "Your build pipeline is failed. Please contact administrator."
+            echo "$(tput sgr0)"
+            exit
+            fi
+        done
+        echo "Build Pipeline Finished"
+    fi
+
+    func(){
+        sleep 5s
+        status=`aws codepipeline get-pipeline-state --name rxarchitecture-master-prod --query stageStates[-1].latestExecution.status --region ap-south-1`
+        status=${status:1}
+        status=${status::-1}
+        if [ "$status" != "Succeeded" ]; then
+            echo "Prod Pipeline is started"
+            while [ "$status" != "Succeeded" ]
+            do
+                sleep 15s
+                status=`aws codepipeline get-pipeline-state --name rxarchitecture-master-prod --query stageStates[-1].latestExecution.status --region ap-south-1`
+                status=${status:1}
+                status=${status::-1}
+                echo "Please wait prod pipeline is in process.It will take time."
+                if [ "$status" = "Failed" ]; then
+                echo "$(tput setaf 1)"
+                echo "Your prod pipeline is failed. Please contact administrator."
+                echo "$(tput sgr0)"
+                exit
+                fi
+            done
+        echo "Prod Pipeline Finished"
+    fi
+    }
+
+    func
+    func
+
+uploadImage-job:
+  when: manual
+  variables:
+    GIT_STRATEGY: none
+  stage: build
+  script: |
+    aws codepipeline start-pipeline-execution --name rxarchitecture-development-stage --region ap-south-1
+    sleep 10s
+    status=`aws codepipeline get-pipeline-state --name rxarchitecture-development-stage --query stageStates[-1].latestExecution.status --region ap-south-1`
+    status=${status:1}
+    status=${status::-1}
+    if [ "$status" != "Succeeded" ]; then
+        echo "Upload image Pipeline is started"
+        while [ "$status" != "Succeeded" ]
+        do
+            sleep 15s
+            status=`aws codepipeline get-pipeline-state --name rxarchitecture-development-stage --query stageStates[-1].latestExecution.status --region ap-south-1`
+            status=${status:1}
+            status=${status::-1}
+            echo "Please wait upload image pipeline is in process.It will take time."
+            if [ "$status" = "Failed" ]; then
+            echo "$(tput setaf 1)"
+            echo "Your upload image pipeline is failed. Please contact administrator."
+            echo "$(tput sgr0)"
+            exit
+            fi
+        done
+        echo "Upload image Pipeline Finished"
+    fi
